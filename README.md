@@ -90,6 +90,23 @@ code .
 * 视觉风格灵感来源于 Nexon / Yostar 《Blue Archive》，版权归原作者所有。
 
 ---
+## Star History
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=DoomVoss/BASpark&type=Date&theme=dark" />
+  <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/svg?repos=DoomVoss/BASpark&type=Date" />
+  <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=DoomVoss/BASpark&type=Date" />
+</picture>
+
+---
+
+## Contributors
+
+<a href="https://github.com/DoomVoss/BASpark/graphs/contributors">
+  <img src="https://contrib.rocks/image?repo=DoomVoss/BASpark&v=0410" />
+</a>
+
+---
 
 ## 许可协议
 

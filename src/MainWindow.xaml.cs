@@ -19,7 +19,7 @@ namespace BASpark
         [DllImport("user32.dll")]
         static extern int GetSystemMetrics(int nIndex);
 
-        // 新增：引入获取光标信息的 API
+        // 获取光标信息的 API
         [DllImport("user32.dll")]
         static extern bool GetCursorInfo(out CURSORINFO pci);
 
@@ -44,13 +44,18 @@ namespace BASpark
         private const int WS_EX_LAYERED = 0x00080000;
         private const int WS_EX_TOOLWINDOW = 0x00000080; 
 
-        private const Int32 CURSOR_SHOWING = 0x00000001; // 新增：光标可见状态码
+        private const Int32 CURSOR_SHOWING = 0x00000001; // 光标可见状态码
         private const int SM_XVIRTUALSCREEN = 76;
         private const int SM_YVIRTUALSCREEN = 77;
         private const int SM_CXVIRTUALSCREEN = 78;
         private const int SM_CYVIRTUALSCREEN = 79;
+        
+        private static readonly IntPtr HWND_TOPMOST = new IntPtr(-1);
+        private const uint SWP_NOSIZE = 0x0001;
+        private const uint SWP_NOMOVE = 0x0002;
         private const uint SWP_NOZORDER = 0x0004;
         private const uint SWP_NOACTIVATE = 0x0010;
+        private const uint SWP_NOSENDCHANGING = 0x0400;
 
         private IKeyboardMouseEvents? _globalHook;
         private IntPtr _hwnd;
@@ -71,6 +76,9 @@ namespace BASpark
         private const string InputModeMouse = "mouse";
         private const string InputModeTouch = "touch";
 
+        // 新增：层级保活计时器
+        private System.Windows.Threading.DispatcherTimer? _topmostTimer;
+
         public MainWindow()
         {
             InitializeComponent();
@@ -89,6 +97,34 @@ namespace BASpark
             UpdateOverlayBounds();
             SystemEvents.DisplaySettingsChanged += HandleDisplaySettingsChanged;
             SetupGlobalHooks();
+
+            InitTopmostSentinel();
+        }
+
+        private void InitTopmostSentinel()
+        {
+            SafeEnsureTopmost();
+
+            _topmostTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(2)
+            };
+            _topmostTimer.Tick += (s, e) => SafeEnsureTopmost();
+            _topmostTimer.Start();
+        }
+
+        protected override void OnDeactivated(EventArgs e)
+        {
+            base.OnDeactivated(e);
+            SafeEnsureTopmost();
+        }
+
+        private void SafeEnsureTopmost()
+        {
+            if (_hwnd == IntPtr.Zero) return;
+
+            SetWindowPos(_hwnd, HWND_TOPMOST, 0, 0, 0, 0, 
+                SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOSENDCHANGING);
         }
 
         public void UpdateColor(string color)
@@ -223,12 +259,12 @@ namespace BASpark
 
             SetWindowPos(
                 _hwnd,
-                IntPtr.Zero,
+                HWND_TOPMOST,
                 _virtualScreenLeft,
                 _virtualScreenTop,
                 _virtualScreenWidth,
                 _virtualScreenHeight,
-                SWP_NOZORDER | SWP_NOACTIVATE);
+                SWP_NOACTIVATE);
         }
 
         private bool TryConvertScreenToOverlayPoint(int screenX, int screenY, out System.Windows.Point clientPoint)
@@ -312,6 +348,12 @@ namespace BASpark
 
         protected override void OnClosed(EventArgs e)
         {
+            if (_topmostTimer != null)
+            {
+                _topmostTimer.Stop();
+                _topmostTimer = null;
+            }
+
             SystemEvents.DisplaySettingsChanged -= HandleDisplaySettingsChanged;
             _globalHook?.Dispose();
             ConfigManager.Save("TotalClicks", ConfigManager.TotalClicks);

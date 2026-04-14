@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="BASpark - 控制面板" Height="650" Width="680"
         WindowStartupLocation="CenterScreen" Background="#F5F7FA" Icon="app.ico">
-    
+
     <Window.Resources>
         <Style x:Key="NavBtn" TargetType="RadioButton">
             <Setter Property="Height" Value="40"/>
@@ -89,9 +89,26 @@
         <Border Background="White" BorderBrush="#E0E0E0" BorderThickness="0,0,1,0">
             <StackPanel Margin="0,30,0,0">
                 <TextBlock Text="✨ BASpark" FontSize="20" FontWeight="Bold" Foreground="#45AFFF" HorizontalAlignment="Center" Margin="0,0,0,30"/>
-                <RadioButton Name="TabWelcome" Content="首页" Style="{StaticResource NavBtn}" IsChecked="True" Click="Tab_Click"/>
-                <RadioButton Name="TabSettings" Content="设置" Style="{StaticResource NavBtn}" Click="Tab_Click"/>
-                <RadioButton Name="TabAbout" Content="关于" Style="{StaticResource NavBtn}" Click="Tab_Click"/>
+                <RadioButton Name="TabWelcome" Content="首页" Style="{StaticResource NavBtn}" IsChecked="True" Click="Tab_Click" GroupName="MainGroup"/>
+                <RadioButton Name="TabSettings" Content="设置" Style="{StaticResource NavBtn}" Click="Tab_Click" GroupName="MainGroup"/>
+            
+                <StackPanel Margin="15,0,10,0">
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsChecked, ElementName=TabSettings}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+                    <RadioButton Name="SubTabBasic" Content=" ├─ 基础设置" Style="{StaticResource NavBtn}" GroupName="SettingsTree" IsChecked="True" FontSize="13" Height="32"/>
+                    <RadioButton Name="SubTabVisual" Content=" ├─ 视觉表现" Style="{StaticResource NavBtn}" GroupName="SettingsTree" FontSize="13" Height="32"/>
+                    <RadioButton Name="SubTabFilter" Content=" └─ 环境过滤" Style="{StaticResource NavBtn}" GroupName="SettingsTree" FontSize="13" Height="32"/>
+                </StackPanel>
+
+                <RadioButton Name="TabAbout" Content="关于" Style="{StaticResource NavBtn}" Click="Tab_Click" GroupName="MainGroup"/>
             </StackPanel>
         </Border>
 
@@ -136,6 +153,18 @@
                 <StackPanel Name="PageSettings" Visibility="Collapsed">
                     <TextBlock Text="参数配置" FontSize="24" FontWeight="Bold" Margin="0,0,0,20" Foreground="#333"/>
 
+                <StackPanel>
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsChecked, ElementName=SubTabBasic}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
+
                     <Border Background="White" CornerRadius="12" Padding="16" Margin="0,0,0,16" BorderBrush="#EAECEF" BorderThickness="1">
                         <StackPanel>
                             <TextBlock Text="基础设置" FontSize="14" FontWeight="Bold" Foreground="#45AFFF" Margin="0,0,0,12"/>
@@ -156,6 +185,27 @@
                             </StackPanel>
                         </StackPanel>
                     </Border>
+
+                    <Button Content="应用更改" Click="SaveSettings_Click" Width="180" Height="42" Background="#45AFFF" Foreground="White" BorderThickness="0" Cursor="Hand" HorizontalAlignment="Left" FontWeight="Bold" FontSize="15">
+                        <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="8"/></Style></Button.Resources>
+                        <Button.Effect>
+                            <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.2"/>
+                        </Button.Effect>
+                    </Button>
+                    <Rectangle Height="40"/>
+                </StackPanel>
+
+                <StackPanel>
+                    <StackPanel.Style>
+                        <Style TargetType="StackPanel">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsChecked, ElementName=SubTabVisual}" Value="True">
+                                    <Setter Property="Visibility" Value="Visible"/>
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </StackPanel.Style>
 
                     <Border Background="White" CornerRadius="12" Padding="16" Margin="0,0,0,16" BorderBrush="#EAECEF" BorderThickness="1">
                         <StackPanel>
@@ -198,6 +248,27 @@
                             </Grid>
                         </StackPanel>
                     </Border>
+
+                        <Button Content="应用更改" Click="SaveSettings_Click" Width="180" Height="42" Background="#45AFFF" Foreground="White" BorderThickness="0" Cursor="Hand" HorizontalAlignment="Left" FontWeight="Bold" FontSize="15">
+                            <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="8"/></Style></Button.Resources>
+                            <Button.Effect>
+                                <DropShadowEffect BlurRadius="10" ShadowDepth="2" Opacity="0.2"/>
+                            </Button.Effect>
+                        </Button>
+                        <Rectangle Height="40"/>
+                    </StackPanel>
+
+                    <StackPanel>
+                        <StackPanel.Style>
+                            <Style TargetType="StackPanel">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                                <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsChecked, ElementName=SubTabFilter}" Value="True">
+                                        <Setter Property="Visibility" Value="Visible"/>
+                                    </DataTrigger>
+                                </Style.Triggers>
+                            </Style>
+                        </StackPanel.Style>
 
                     <Border Background="White" CornerRadius="12" Padding="16" Margin="0,0,0,16" BorderBrush="#EAECEF" BorderThickness="1">
                         <StackPanel>
@@ -250,6 +321,7 @@
                     <Rectangle Height="40"/>
                 </StackPanel>
 
+                </StackPanel>
                 <StackPanel Name="PageAbout" Visibility="Collapsed">
                     <TextBlock Text="关于" FontSize="24" FontWeight="Bold" Margin="0,0,0,20"/>
                     
@@ -268,7 +340,7 @@
                     <Border Background="#FFF0F0" CornerRadius="6" Padding="12" Margin="0,0,0,20" BorderBrush="#FFCCCC" BorderThickness="1">
                         <StackPanel Orientation="Horizontal">
                             <TextBlock Text="⚠️" Margin="0,0,8,0" VerticalAlignment="Top"/>
-                            <TextBlock Text="安全提示：请务必确保从 GitHub 官方仓库下载。第三方分发渠道的版本可能存在报毒风险或恶意篡改。" Foreground="#CC0000" FontSize="12" TextWrapping="Wrap" MaxWidth="380"/>
+                            <TextBlock Text="安全提示：请务必确保从官方渠道下载。第三方分发渠道的版本可能存在报毒风险或恶意篡改。" Foreground="#CC0000" FontSize="12" TextWrapping="Wrap" MaxWidth="380"/>
                         </StackPanel>
                     </Border>
 
@@ -277,7 +349,7 @@
                     <Button Content="🌐 访问 GitHub 官方仓库" Tag="https://github.com/DoomVoss/BASpark" Click="OpenLink_Click" Width="220" Height="38" Background="#333" Foreground="White" BorderThickness="0" HorizontalAlignment="Left" Cursor="Hand" Margin="0,0,0,10"/>
                     <Button Content="📺 关注 B 站官号" Tag="https://space.bilibili.com/3493116084488813" Click="OpenLink_Click" Width="220" Height="38" Background="#FB7299" Foreground="White" BorderThickness="0" HorizontalAlignment="Left" Cursor="Hand" Margin="0,0,0,10"/>
                     <Button Content="💬 加入 QQ 交流群" Tag="https://qm.qq.com/q/lgvVto3yPm" Click="OpenLink_Click" Width="220" Height="38" Background="#12B7F5" Foreground="White" BorderThickness="0" HorizontalAlignment="Left" Cursor="Hand" Margin="0,0,0,10"/>
-                    <Button Content="☕ 赞助支持作者" Tag="https://qq.catbotstudio.top/jrys/spor.png" Click="OpenLink_Click" Width="220" Height="38" Background="#FF8140" Foreground="White" BorderThickness="0" HorizontalAlignment="Left" Cursor="Hand" Margin="0,0,0,30"/>
+                    <Button Content="☕ 赞助支持作者" Tag="https://afdian.com/a/doomvoss" Click="OpenLink_Click" Width="220" Height="38" Background="#FF8140" Foreground="White" BorderThickness="0" HorizontalAlignment="Left" Cursor="Hand" Margin="0,0,0,30"/>
 
                     <TextBlock Text="开发者选项" FontSize="14" FontWeight="Bold" Foreground="#999" Margin="0,15,0,10"/>
                     <Button Content="重置所有设置并退出" Click="ResetConfig_Click" Background="#FFE0E0" Foreground="#CC0000" BorderThickness="0" HorizontalAlignment="Left" Padding="15,8" Cursor="Hand"/>

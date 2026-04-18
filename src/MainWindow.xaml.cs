@@ -128,7 +128,6 @@ namespace BASpark
 
         public MainWindow()
         {
-            // 强制 WPF 使用软件渲染，以避免在 WebView2 透明背景下 DWM 占用过高 GPU 的问题
             System.Windows.Media.RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
 
             InitializeComponent();
@@ -205,6 +204,11 @@ namespace BASpark
         {
             _suppressionCacheValidUntilTicks = 0;
             ShouldSuppressEffects(forceRefresh: true);
+        }
+
+        public void UpdateTouchMode(bool enabled)
+        {
+            ConfigManager.IsTouchscreenMode = enabled;
         }
 
         public bool IsEffectSuppressedByEnvironment()
@@ -297,6 +301,7 @@ namespace BASpark
             _ = webView.CoreWebView2.ExecuteScriptAsync(contextScript + actionScript);
         }
 
+        // 恢复对光标是否隐藏的检测，加入了触摸屏模式判断
         private bool CanRenderEffects()
         {
             if (!ConfigManager.IsEffectEnabled || webView?.CoreWebView2 == null)
@@ -306,6 +311,13 @@ namespace BASpark
             }
 
             if (ShouldSuppressEffects())
+            {
+                ReleasePointerState();
+                return false;
+            }
+
+            // 如果不是触摸屏模式，且当前鼠标指针不可见，则屏蔽特效
+            if (!ConfigManager.IsTouchscreenMode && !IsCursorVisible())
             {
                 ReleasePointerState();
                 return false;
@@ -531,18 +543,15 @@ namespace BASpark
             percentPoint = default;
             try
             {
-                // 1. 获取窗口绝对的物理边界
                 if (!GetWindowRect(_hwnd, out RECT rect)) return false;
 
                 double physWidth = rect.Right - rect.Left;
                 double physHeight = rect.Bottom - rect.Top;
                 if (physWidth <= 0 || physHeight <= 0) return false;
 
-                // 2. 计算出纯物理维度的百分比 (0.000 ~ 1.000)
                 double percentX = (screenX - rect.Left) / physWidth;
                 double percentY = (screenY - rect.Top) / physHeight;
 
-                // 3. 将百分比包装在 Point 里传给下面，彻底抛弃 viewportWidth
                 percentPoint = new System.Windows.Point(
                     Math.Clamp(percentX, 0.0, 1.0),
                     Math.Clamp(percentY, 0.0, 1.0)

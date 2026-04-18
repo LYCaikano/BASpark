@@ -34,6 +34,7 @@ namespace BASpark
         public static bool HideInFullscreen { get; set; } = true;
         public static ProcessFilterModeOption ProcessFilterMode { get; set; } = ProcessFilterModeOption.Disabled;
         public static string ProcessFilterList { get; set; } = "";
+        public static bool IsTouchscreenMode { get; set; } = false;
 
         public static void Load()
         {
@@ -60,6 +61,7 @@ namespace BASpark
                         TrailRefreshRate = Math.Clamp(Convert.ToInt32(key.GetValue("TrailRefreshRate", 40)), 10, 240);
                         EnableEnvironmentFilter = Convert.ToBoolean(key.GetValue("EnableEnvironmentFilter", false));
                         HideInFullscreen = Convert.ToBoolean(key.GetValue("HideInFullscreen", true));
+                        IsTouchscreenMode = Convert.ToBoolean(key.GetValue("IsTouchscreenMode", false));
 
                         string processFilterModeRaw = key.GetValue("ProcessFilterMode", ProcessFilterModeOption.Disabled.ToString())?.ToString()
                             ?? ProcessFilterModeOption.Disabled.ToString();
@@ -175,6 +177,7 @@ namespace BASpark
                 HideInFullscreen = true;
                 ProcessFilterMode = ProcessFilterModeOption.Disabled;
                 ProcessFilterList = "";
+                IsTouchscreenMode = false;
             }
             catch { }
         }

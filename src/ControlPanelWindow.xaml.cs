@@ -362,6 +362,7 @@ namespace BASpark
             CheckEnvironmentFilter.IsChecked = ConfigManager.EnableEnvironmentFilter;
             CheckHideInFullscreen.IsChecked = ConfigManager.HideInFullscreen;
             CheckRunAsAdmin.IsChecked = ConfigManager.RunAsAdmin; 
+            CheckTouchscreenMode.IsChecked = ConfigManager.IsTouchscreenMode;
 
             SelectProcessFilterMode(ConfigManager.ProcessFilterMode);
             
@@ -546,13 +547,15 @@ namespace BASpark
             bool autoStartEnabled = CheckAutoStart.IsChecked ?? false;
             bool startSilentEnabled = CheckStartSilent.IsChecked ?? false;
             bool runAsAdminEnabled = CheckRunAsAdmin.IsChecked ?? false;
+            bool isTouchscreenEnabled = CheckTouchscreenMode?.IsChecked ?? false;
             ProcessFilterModeOption processFilterMode = GetSelectedProcessFilterMode();
             
             string selectedProcesses = string.Join(Environment.NewLine, 
                 ProcessList.Where(p => p.IsSelected).Select(p => p.ProcessName));
             string normalizedProcessFilterList = ConfigManager.NormalizeProcessFilterList(selectedProcesses);
 
-            ConfigManager.Save("RunAsAdmin", runAsAdminEnabled); 
+            ConfigManager.Save("RunAsAdmin", runAsAdminEnabled);
+            ConfigManager.Save("IsTouchscreenMode", isTouchscreenEnabled);
             ConfigManager.Save("IsEffectEnabled", CheckMasterSwitch.IsChecked ?? true);
             ConfigManager.Save("AutoStart", autoStartEnabled);
             ConfigManager.Save("EnableTelemetry", CheckTelemetry.IsChecked ?? false);
@@ -576,6 +579,7 @@ namespace BASpark
             App.Overlay?.UpdateEffectSettings(effectScale, effectOpacity, effectSpeed);
             App.Overlay?.UpdateTrailRefreshRate(trailRefreshRate);
             App.Overlay?.RefreshEnvironmentFilterState();
+            App.Overlay?.UpdateTouchMode(isTouchscreenEnabled);
 
             bool isCurrentAdmin = new WindowsPrincipal(WindowsIdentity.GetCurrent()).IsInRole(WindowsBuiltInRole.Administrator);
             if (runAsAdminEnabled && !isCurrentAdmin)

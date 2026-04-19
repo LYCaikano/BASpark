@@ -12,6 +12,17 @@ namespace BASpark
 {
     public partial class MainWindow : Window
     {
+        [DllImport("kernel32.dll", SetLastError = true)]
+        static extern IntPtr OpenProcess(uint processAccess, bool bInheritHandle, uint processId);
+
+        [DllImport("kernel32.dll", SetLastError = true)]
+        static extern bool CloseHandle(IntPtr hObject);
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Unicode)]
+        static extern bool QueryFullProcessImageName(IntPtr hProcess, int dwFlags, StringBuilder lpExeName, ref int lpdwSize);
+
+        private const uint PROCESS_QUERY_LIMITED_INFORMATION = 0x1000;
+
         [DllImport("user32.dll")]
         static extern int GetWindowLong(IntPtr hWnd, int nIndex);
         [DllImport("user32.dll")]
@@ -46,6 +57,18 @@ namespace BASpark
         // 获取光标信息的 API
         [DllImport("user32.dll")]
         static extern bool GetCursorInfo(out CURSORINFO pci);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        static extern bool GetCursorPos(out POINT lpPoint);
+
+        [DllImport("user32.dll")]
+        static extern IntPtr WindowFromPoint(POINT Point);
+
+        [DllImport("user32.dll")]
+        static extern IntPtr GetAncestor(IntPtr hwnd, uint gaFlags);
+
+        private const uint GA_ROOT = 2;
 
         [StructLayout(LayoutKind.Sequential)]
         private struct POINT
@@ -117,6 +140,7 @@ namespace BASpark
         private bool? _lastReportedAlwaysTrail;
         private long _suppressionCacheValidUntilTicks = 0;
         private bool _isSuppressedByEnvironment = false;
+        private IntPtr _lastForegroundWindow = IntPtr.Zero;
 
         private long _moveIntervalTicks = 250000;
         private const long ClickIntervalTicks = 300000;
@@ -203,6 +227,7 @@ namespace BASpark
         public void RefreshEnvironmentFilterState()
         {
             _suppressionCacheValidUntilTicks = 0;
+            _lastForegroundWindow = IntPtr.Zero;
             ShouldSuppressEffects(forceRefresh: true);
         }
 
@@ -349,20 +374,39 @@ namespace BASpark
                 return false;
             }
 
+            GetCursorPos(out POINT pt);
+            IntPtr cursorHwnd = WindowFromPoint(pt);
+            IntPtr targetWindow = GetAncestor(cursorHwnd, GA_ROOT);
+
+            if (targetWindow == IntPtr.Zero || targetWindow == _hwnd)
+            {
+                targetWindow = GetForegroundWindow();
+            }
+
             long nowTicks = DateTime.UtcNow.Ticks;
+
+            if (targetWindow != _lastForegroundWindow)
+            {
+                forceRefresh = true; 
+                _lastForegroundWindow = targetWindow; 
+            }
+
             if (!forceRefresh && nowTicks < _suppressionCacheValidUntilTicks)
             {
                 return _isSuppressedByEnvironment;
             }
 
-            IntPtr foregroundWindow = GetForegroundWindow();
-            if (!TryGetForegroundProcessName(foregroundWindow, out string processName))
+            if (!TryGetForegroundProcessName(targetWindow, out string processName))
             {
-                UpdateSuppressionState(nowTicks, false);
-                return false;
+                if (!TryGetForegroundProcessName(GetForegroundWindow(), out processName))
+                {
+                    UpdateSuppressionState(nowTicks, false);
+                    return false;
+                }
             }
 
-            if (ConfigManager.HideInFullscreen && IsEffectiveFullscreenWindow(foregroundWindow))
+            IntPtr actualForeground = GetForegroundWindow();
+            if (ConfigManager.HideInFullscreen && IsEffectiveFullscreenWindow(actualForeground))
             {
                 UpdateSuppressionState(nowTicks, true);
                 return true;
@@ -454,22 +498,26 @@ namespace BASpark
 
         private string GetProcessExecutableName(uint processId)
         {
-            try
+            IntPtr hProc = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, processId);
+            if (hProc != IntPtr.Zero)
             {
-                using Process process = Process.GetProcessById(unchecked((int)processId));
-
-                string fallbackName = process.ProcessName;
-                if (!fallbackName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                StringBuilder sb = new StringBuilder(1024);
+                int size = sb.Capacity;
+                if (QueryFullProcessImageName(hProc, 0, sb, ref size))
                 {
-                    fallbackName += ".exe";
+                    CloseHandle(hProc);
+                    string path = sb.ToString();
+                    string fileName = System.IO.Path.GetFileName(path);
+                    
+                    if (!fileName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase))
+                    {
+                        fileName += ".exe";
+                    }
+                    return fileName.ToLowerInvariant();
                 }
-
-                return fallbackName.ToLowerInvariant();
+                CloseHandle(hProc);
             }
-            catch
-            {
-                return string.Empty;
-            }
+            return string.Empty;
         }
 
         private bool IsEffectiveFullscreenWindow(IntPtr hwnd)

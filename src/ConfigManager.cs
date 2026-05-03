@@ -11,9 +11,11 @@ namespace BASpark
         None = 0,
         EffectScale = 1 << 0,
         EffectOpacity = 1 << 1,
-        EffectSpeed = 1 << 2,
+        UnifiedAnimationSpeed = 1 << 2,
         TrailRefreshRate = 1 << 3,
-        ParticleColor = 1 << 4
+        ParticleColor = 1 << 4,
+        TrailAnimationSpeed = 1 << 5,
+        ClickAnimationSpeed = 1 << 6
     }
 
     public enum ProcessFilterModeOption
@@ -57,6 +59,9 @@ namespace BASpark
         public static double EffectScale { get; set; } = 1.5;
         public static double EffectOpacity { get; set; } = 1.0;
         public static double EffectSpeed { get; set; } = 1.0;
+        public static bool UseLinkedAnimationSpeed { get; set; } = true;
+        public static double TrailAnimationSpeed { get; set; } = 1.0;
+        public static double ClickAnimationSpeed { get; set; } = 1.0;
         public static int TrailRefreshRate { get; set; } = 40;
         public static bool EnableEnvironmentFilter { get; set; } = false;
         public static bool HideInFullscreen { get; set; } = true;
@@ -94,6 +99,9 @@ namespace BASpark
                         EffectScale = Math.Clamp(Convert.ToDouble(key.GetValue("EffectScale", 1.5)), 0.5, 3.0);
                         EffectOpacity = Math.Clamp(Convert.ToDouble(key.GetValue("EffectOpacity", 1.0)), 0.1, 1.0);
                         EffectSpeed = Math.Clamp(Convert.ToDouble(key.GetValue("EffectSpeed", 1.0)), 0.2, 3.0);
+                        UseLinkedAnimationSpeed = Convert.ToBoolean(key.GetValue("UseLinkedAnimationSpeed", true));
+                        TrailAnimationSpeed = Math.Clamp(Convert.ToDouble(key.GetValue("TrailAnimationSpeed", EffectSpeed)), 0.2, 3.0);
+                        ClickAnimationSpeed = Math.Clamp(Convert.ToDouble(key.GetValue("ClickAnimationSpeed", EffectSpeed)), 0.2, 3.0);
                         TrailRefreshRate = Math.Clamp(Convert.ToInt32(key.GetValue("TrailRefreshRate", 40)), 10, 240);
                         EnableEnvironmentFilter = Convert.ToBoolean(key.GetValue("EnableEnvironmentFilter", false));
                         HideInFullscreen = Convert.ToBoolean(key.GetValue("HideInFullscreen", true));
@@ -153,6 +161,20 @@ namespace BASpark
             catch { }
         }
 
+        public static void GetAnimationSpeedsForOverlay(out double trailSpeed, out double clickSpeed)
+        {
+            if (UseLinkedAnimationSpeed)
+            {
+                trailSpeed = EffectSpeed;
+                clickSpeed = EffectSpeed;
+            }
+            else
+            {
+                trailSpeed = TrailAnimationSpeed;
+                clickSpeed = ClickAnimationSpeed;
+            }
+        }
+
         public static List<FilterProfile> GetProfiles() => _profiles;
 
         public static FilterProfile? GetActiveProfile()
@@ -187,9 +209,22 @@ namespace BASpark
                 Save("EffectOpacity", 1.0);
             }
 
-            if (flags.HasFlag(VisualAppearanceResetFlags.EffectSpeed))
+            if (flags.HasFlag(VisualAppearanceResetFlags.UnifiedAnimationSpeed))
             {
+                Save("UseLinkedAnimationSpeed", true);
                 Save("EffectSpeed", 1.0);
+                Save("TrailAnimationSpeed", 1.0);
+                Save("ClickAnimationSpeed", 1.0);
+            }
+
+            if (flags.HasFlag(VisualAppearanceResetFlags.TrailAnimationSpeed))
+            {
+                Save("TrailAnimationSpeed", 1.0);
+            }
+
+            if (flags.HasFlag(VisualAppearanceResetFlags.ClickAnimationSpeed))
+            {
+                Save("ClickAnimationSpeed", 1.0);
             }
 
             if (flags.HasFlag(VisualAppearanceResetFlags.TrailRefreshRate))
@@ -407,6 +442,9 @@ namespace BASpark
                 EffectScale = 1.5;
                 EffectOpacity = 1.0;
                 EffectSpeed = 1.0;
+                UseLinkedAnimationSpeed = true;
+                TrailAnimationSpeed = 1.0;
+                ClickAnimationSpeed = 1.0;
                 TrailRefreshRate = 40;
                 EnableEnvironmentFilter = false;
                 HideInFullscreen = true;

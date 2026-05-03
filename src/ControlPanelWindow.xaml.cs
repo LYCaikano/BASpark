@@ -76,6 +76,7 @@ namespace BASpark
         private DispatcherTimer _refreshTimer;
         private DispatcherTimer _noticeTimer;
         private bool _isCheckingUpdate = false;
+        private bool _suspendLinkedAnimationUiHandlers;
 
         public ObservableCollection<FilterProfile> Profiles { get; set; } = new ObservableCollection<FilterProfile>();
         public ObservableCollection<string> CurrentProfileProcesses { get; set; } = new ObservableCollection<string>();
@@ -397,6 +398,19 @@ namespace BASpark
 
         private void LoadSettings()
         {
+            _suspendLinkedAnimationUiHandlers = true;
+            try
+            {
+                LoadSettingsCore();
+            }
+            finally
+            {
+                _suspendLinkedAnimationUiHandlers = false;
+            }
+        }
+
+        private void LoadSettingsCore()
+        {
             CheckMasterSwitch.IsChecked = ConfigManager.IsEffectEnabled;
             CheckAutoStart.IsChecked = ConfigManager.AutoStart;
             CheckStartSilent.IsChecked = ConfigManager.StartSilent;
@@ -427,8 +441,12 @@ namespace BASpark
 
             SliderScale.Value = ConfigManager.EffectScale;
             SliderOpacity.Value = ConfigManager.EffectOpacity * 100;
+            CheckLinkedAnimationSpeed.IsChecked = ConfigManager.UseLinkedAnimationSpeed;
             SliderSpeed.Value = ConfigManager.EffectSpeed;
+            SliderTrailAnimSpeed.Value = ConfigManager.TrailAnimationSpeed;
+            SliderClickAnimSpeed.Value = ConfigManager.ClickAnimationSpeed;
             SliderTrailRefresh.Value = ConfigManager.TrailRefreshRate;
+            UpdateAnimationSpeedPanelVisibility();
         }
 
         private void LoadScreenOptions()
@@ -766,23 +784,21 @@ namespace BASpark
             RunningProcessOverlay.Visibility = Visibility.Collapsed;
         }
 
-        private void EnsureVisualResetItems()
+        private void RebuildVisualResetItems()
         {
-            if (VisualResetItems.Count > 0)
-            {
-                return;
-            }
-
+            VisualResetItems.Clear();
             VisualResetItems.Add(new VisualResetItem(VisualAppearanceResetFlags.EffectScale, "缩放比例", "默认 1.50 ×"));
             VisualResetItems.Add(new VisualResetItem(VisualAppearanceResetFlags.EffectOpacity, "全局不透明度", "默认 100 %"));
-            VisualResetItems.Add(new VisualResetItem(VisualAppearanceResetFlags.EffectSpeed, "动画播放速度", "默认 1.00 ×"));
+            VisualResetItems.Add(new VisualResetItem(VisualAppearanceResetFlags.UnifiedAnimationSpeed, "统一动画速度", "开启「同一速度」并默认 1.00 ×"));
+            VisualResetItems.Add(new VisualResetItem(VisualAppearanceResetFlags.TrailAnimationSpeed, "拖尾动画速度", "独立项默认 1.00 ×"));
+            VisualResetItems.Add(new VisualResetItem(VisualAppearanceResetFlags.ClickAnimationSpeed, "点击动画速度", "独立项默认 1.00 ×"));
             VisualResetItems.Add(new VisualResetItem(VisualAppearanceResetFlags.TrailRefreshRate, "拖尾刷新率", "默认 40 Hz"));
             VisualResetItems.Add(new VisualResetItem(VisualAppearanceResetFlags.ParticleColor, "特效主题颜色", "默认 RGB(45,175,255)"));
         }
 
         private void OpenVisualResetOverlay_Click(object sender, RoutedEventArgs e)
         {
-            EnsureVisualResetItems();
+            RebuildVisualResetItems();
             foreach (var item in VisualResetItems)
             {
                 item.IsSelected = true;
@@ -851,12 +867,12 @@ namespace BASpark
             ConfigManager.ApplyVisualAppearanceDefaults(flags);
             LoadSettings();
 
+            int trailRefreshRate = (int)Math.Round(SliderTrailRefresh.Value);
+            ConfigManager.GetAnimationSpeedsForOverlay(out double trailSp, out double clickSp);
             double effectScale = Math.Round(SliderScale.Value, 2);
             double effectOpacity = Math.Round(SliderOpacity.Value / 100.0, 2);
-            double effectSpeed = Math.Round(SliderSpeed.Value, 2);
-            int trailRefreshRate = (int)Math.Round(SliderTrailRefresh.Value);
             App.Overlay?.UpdateColor(ConfigManager.ParticleColor);
-            App.Overlay?.UpdateEffectSettings(effectScale, effectOpacity, effectSpeed);
+            App.Overlay?.UpdateEffectSettings(effectScale, effectOpacity, trailSp, clickSp);
             App.Overlay?.UpdateTrailRefreshRate(trailRefreshRate);
 
             VisualResetOverlay.Visibility = Visibility.Collapsed;
@@ -883,7 +899,23 @@ namespace BASpark
         {
             double effectScale = Math.Round(SliderScale.Value, 2);
             double effectOpacity = Math.Round(SliderOpacity.Value / 100.0, 2);
-            double effectSpeed = Math.Round(SliderSpeed.Value, 2);
+            bool useLinkedAnimationSpeed = CheckLinkedAnimationSpeed.IsChecked == true;
+            double trailAnimSpeed;
+            double clickAnimSpeed;
+            double effectSpeedForRegistry;
+            if (useLinkedAnimationSpeed)
+            {
+                effectSpeedForRegistry = Math.Round(SliderSpeed.Value, 2);
+                trailAnimSpeed = effectSpeedForRegistry;
+                clickAnimSpeed = effectSpeedForRegistry;
+            }
+            else
+            {
+                trailAnimSpeed = Math.Round(SliderTrailAnimSpeed.Value, 2);
+                clickAnimSpeed = Math.Round(SliderClickAnimSpeed.Value, 2);
+                effectSpeedForRegistry = clickAnimSpeed;
+            }
+
             int trailRefreshRate = (int)Math.Round(SliderTrailRefresh.Value);
             bool autoStartEnabled = CheckAutoStart.IsChecked ?? false;
             bool startSilentEnabled = CheckStartSilent.IsChecked ?? false;
@@ -908,7 +940,10 @@ namespace BASpark
             ConfigManager.Save("ParticleColor", ConfigManager.ParticleColor);
             ConfigManager.Save("EffectScale", effectScale);
             ConfigManager.Save("EffectOpacity", effectOpacity);
-            ConfigManager.Save("EffectSpeed", effectSpeed);
+            ConfigManager.Save("UseLinkedAnimationSpeed", useLinkedAnimationSpeed);
+            ConfigManager.Save("EffectSpeed", effectSpeedForRegistry);
+            ConfigManager.Save("TrailAnimationSpeed", trailAnimSpeed);
+            ConfigManager.Save("ClickAnimationSpeed", clickAnimSpeed);
             ConfigManager.Save("TrailRefreshRate", trailRefreshRate);
             ConfigManager.Save("TotalClicks", ConfigManager.TotalClicks);
             ConfigManager.Save("EnableAlwaysTrailEffect", CheckAlwaysTrailEffectSwitch.IsChecked ?? false);
@@ -945,7 +980,8 @@ namespace BASpark
             ApplyAutoStartSettings();
 
             App.Overlay?.UpdateColor(ConfigManager.ParticleColor);
-            App.Overlay?.UpdateEffectSettings(effectScale, effectOpacity, effectSpeed);
+            GetUiAnimationSpeeds(out double overlayTrail, out double overlayClick);
+            App.Overlay?.UpdateEffectSettings(effectScale, effectOpacity, overlayTrail, overlayClick);
             App.Overlay?.UpdateTrailRefreshRate(trailRefreshRate);
             App.Overlay?.RefreshEnvironmentFilterState();
             App.Overlay?.UpdateTouchMode(isTouchscreenEnabled);
@@ -1105,6 +1141,53 @@ namespace BASpark
         private void EffectSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             if (!IsLoaded) return;
+        }
+
+        private void LinkedAnimationSpeed_Changed(object sender, RoutedEventArgs e)
+        {
+            if (!IsLoaded || _suspendLinkedAnimationUiHandlers)
+            {
+                return;
+            }
+
+            bool linked = CheckLinkedAnimationSpeed.IsChecked == true;
+            if (linked)
+            {
+                double avg = Math.Round((SliderTrailAnimSpeed.Value + SliderClickAnimSpeed.Value) / 2.0, 2);
+                avg = Math.Clamp(avg, 0.2, 3.0);
+                SliderSpeed.Value = avg;
+            }
+            else
+            {
+                double v = Math.Round(SliderSpeed.Value, 2);
+                v = Math.Clamp(v, 0.2, 3.0);
+                SliderTrailAnimSpeed.Value = v;
+                SliderClickAnimSpeed.Value = v;
+            }
+
+            UpdateAnimationSpeedPanelVisibility();
+        }
+
+        private void UpdateAnimationSpeedPanelVisibility()
+        {
+            bool linked = CheckLinkedAnimationSpeed.IsChecked == true;
+            PanelUnifiedAnimationSpeed.Visibility = linked ? Visibility.Visible : Visibility.Collapsed;
+            PanelSplitAnimationSpeed.Visibility = linked ? Visibility.Collapsed : Visibility.Visible;
+        }
+
+        private void GetUiAnimationSpeeds(out double trailSpeed, out double clickSpeed)
+        {
+            if (CheckLinkedAnimationSpeed.IsChecked == true)
+            {
+                double v = Math.Round(SliderSpeed.Value, 2);
+                trailSpeed = v;
+                clickSpeed = v;
+            }
+            else
+            {
+                trailSpeed = Math.Round(SliderTrailAnimSpeed.Value, 2);
+                clickSpeed = Math.Round(SliderClickAnimSpeed.Value, 2);
+            }
         }
 
         private void ResetConfig_Click(object sender, RoutedEventArgs e)

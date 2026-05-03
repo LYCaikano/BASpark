@@ -195,13 +195,14 @@ namespace BASpark
             ExecuteScript($"if(window.updateColor) window.updateColor('{color}');");
         }
 
-        public void UpdateEffectSettings(double scale, double opacity, double speed)
+        public void UpdateEffectSettings(double scale, double opacity, double trailSpeed, double clickSpeed)
         {
             string scaleStr = scale.ToString("F2", CultureInfo.InvariantCulture);
             string opacityStr = opacity.ToString("F2", CultureInfo.InvariantCulture);
-            string speedStr = speed.ToString("F2", CultureInfo.InvariantCulture);
+            string trailStr = trailSpeed.ToString("F2", CultureInfo.InvariantCulture);
+            string clickStr = clickSpeed.ToString("F2", CultureInfo.InvariantCulture);
 
-            ExecuteScript($"if(window.updateEffectSettings) window.updateEffectSettings({scaleStr}, {opacityStr}, {speedStr});");
+            ExecuteScript($"if(window.updateEffectSettings) window.updateEffectSettings({scaleStr}, {opacityStr}, {trailStr}, {clickStr});");
         }
 
         public void UpdateTrailRefreshRate(int hz)
@@ -295,7 +296,8 @@ namespace BASpark
                         _lastReportedInputMode = null;
                         _lastReportedAlwaysTrail = null;
                         UpdateColor(ConfigManager.ParticleColor);
-                        UpdateEffectSettings(ConfigManager.EffectScale, ConfigManager.EffectOpacity, ConfigManager.EffectSpeed);
+                        ConfigManager.GetAnimationSpeedsForOverlay(out double trailSp, out double clickSp);
+                        UpdateEffectSettings(ConfigManager.EffectScale, ConfigManager.EffectOpacity, trailSp, clickSp);
                         SyncInputContext(InputModeMouse);
                     };
                     coreWebView.NavigationCompleted += _navigationCompletedHandler;

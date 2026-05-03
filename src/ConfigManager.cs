@@ -5,6 +5,17 @@ using System.Linq;
 
 namespace BASpark
 {
+    [Flags]
+    public enum VisualAppearanceResetFlags
+    {
+        None = 0,
+        EffectScale = 1 << 0,
+        EffectOpacity = 1 << 1,
+        EffectSpeed = 1 << 2,
+        TrailRefreshRate = 1 << 3,
+        ParticleColor = 1 << 4
+    }
+
     public enum ProcessFilterModeOption
     {
         Disabled,
@@ -156,6 +167,40 @@ namespace BASpark
             string json = System.Text.Json.JsonSerializer.Serialize(_profiles);
             Save("FilterProfiles", json);
             Save("ActiveProfileId", activeId);
+        }
+
+        /// 将选中的视觉表现项恢复默认值并写入注册表
+        public static void ApplyVisualAppearanceDefaults(VisualAppearanceResetFlags flags)
+        {
+            if (flags == VisualAppearanceResetFlags.None)
+            {
+                return;
+            }
+
+            if (flags.HasFlag(VisualAppearanceResetFlags.EffectScale))
+            {
+                Save("EffectScale", 1.5);
+            }
+
+            if (flags.HasFlag(VisualAppearanceResetFlags.EffectOpacity))
+            {
+                Save("EffectOpacity", 1.0);
+            }
+
+            if (flags.HasFlag(VisualAppearanceResetFlags.EffectSpeed))
+            {
+                Save("EffectSpeed", 1.0);
+            }
+
+            if (flags.HasFlag(VisualAppearanceResetFlags.TrailRefreshRate))
+            {
+                Save("TrailRefreshRate", 40);
+            }
+
+            if (flags.HasFlag(VisualAppearanceResetFlags.ParticleColor))
+            {
+                Save("ParticleColor", "45,175,255");
+            }
         }
 
         public static void Save(string name, object value)

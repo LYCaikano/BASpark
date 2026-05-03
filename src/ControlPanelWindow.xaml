@@ -255,7 +255,12 @@
 
                     <Border Background="White" CornerRadius="12" Padding="16" Margin="0,0,0,16" BorderBrush="#EAECEF" BorderThickness="1">
                         <StackPanel>
-                            <TextBlock Text="视觉表现" FontSize="14" FontWeight="Bold" Foreground="#45AFFF" Margin="0,0,0,8"/>
+                            <DockPanel LastChildFill="False" Margin="0,0,0,8">
+                                <TextBlock Text="视觉表现" FontSize="14" FontWeight="Bold" Foreground="#45AFFF" VerticalAlignment="Center" DockPanel.Dock="Left"/>
+                                <Button Content="恢复默认设置" Click="OpenVisualResetOverlay_Click" DockPanel.Dock="Right" Padding="10,4" Height="28" FontSize="12" Background="White" BorderBrush="#D6DEE8" Cursor="Hand" VerticalAlignment="Center">
+                                    <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="4"/></Style></Button.Resources>
+                                </Button>
+                            </DockPanel>
                             <TextBlock Text="提示：可点击数字输入精确值后可按回车应用" FontSize="11" Foreground="#999" VerticalAlignment="Center" DockPanel.Dock="Right" Margin="0,0,0,8"/>
                             
                             <StackPanel Margin="0,0,0,15">
@@ -548,6 +553,51 @@
                             <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="6"/></Style></Button.Resources>
                         </Button>
                         <Button Content="确认添加" Click="ConfirmAddRunningProcesses_Click" Width="100" Height="32" Background="#45AFFF" Foreground="White" BorderThickness="0">
+                            <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="6"/></Style></Button.Resources>
+                        </Button>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </Grid>
+
+        <!-- 视觉表现恢复默认 (Overlay) -->
+        <Grid Name="VisualResetOverlay" Grid.ColumnSpan="2" Background="#80000000" Visibility="Collapsed">
+            <Border Background="White" CornerRadius="12" Width="400" Height="420" HorizontalAlignment="Center" VerticalAlignment="Center" Padding="20">
+                <Grid>
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                        <RowDefinition Height="Auto"/>
+                    </Grid.RowDefinitions>
+
+                    <TextBlock Text="选择要恢复默认的视觉表现项" FontSize="18" FontWeight="Bold" Margin="0,0,0,8" TextWrapping="Wrap"/>
+
+                    <Grid Grid.Row="1" Margin="0,0,0,10">
+                        <TextBox x:Name="SearchVisualReset" Height="30" VerticalContentAlignment="Center" TextChanged="SearchVisualReset_TextChanged" Background="#F8FAFF" BorderBrush="#D6DEE8" Padding="26,0,5,0">
+                            <TextBox.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="6"/></Style></TextBox.Resources>
+                        </TextBox>
+                        <TextBlock Text="🔍" VerticalAlignment="Center" HorizontalAlignment="Left" Margin="8,0,0,0" Foreground="#AAA" IsHitTestVisible="False"/>
+                    </Grid>
+
+                    <ListBox Name="ListVisualResetItems" Grid.Row="2" Background="#FDFDFF" BorderBrush="#E0E8F0" BorderThickness="1">
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <CheckBox IsChecked="{Binding IsSelected}" Margin="2,4" VerticalContentAlignment="Center">
+                                    <StackPanel Orientation="Vertical" Margin="8,0,0,0">
+                                        <TextBlock Text="{Binding Title}" FontWeight="SemiBold" FontSize="13" Foreground="#333"/>
+                                        <TextBlock Text="{Binding Subtitle}" FontSize="10" Foreground="#999"/>
+                                    </StackPanel>
+                                </CheckBox>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <StackPanel Grid.Row="3" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,15,0,0">
+                        <Button Content="取消" Click="CloseVisualResetOverlay_Click" Width="80" Height="32" Background="White" BorderBrush="#DDD" Margin="0,0,10,0">
+                            <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="6"/></Style></Button.Resources>
+                        </Button>
+                        <Button Content="确认重置" Click="ConfirmVisualReset_Click" Width="100" Height="32" Background="#45AFFF" Foreground="White" BorderThickness="0">
                             <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="6"/></Style></Button.Resources>
                         </Button>
                     </StackPanel>

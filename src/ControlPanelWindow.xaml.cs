@@ -30,6 +30,21 @@ namespace BASpark
         public bool IsSelected { get; set; }
     }
 
+    public class VisualResetItem
+    {
+        public VisualAppearanceResetFlags Flags { get; }
+        public string Title { get; }
+        public string Subtitle { get; }
+        public bool IsSelected { get; set; }
+
+        public VisualResetItem(VisualAppearanceResetFlags flags, string title, string subtitle)
+        {
+            Flags = flags;
+            Title = title;
+            Subtitle = subtitle;
+        }
+    }
+
     public class ScreenOptionItem
     {
         public int DisplayIndex { get; set; }
@@ -65,6 +80,7 @@ namespace BASpark
         public ObservableCollection<FilterProfile> Profiles { get; set; } = new ObservableCollection<FilterProfile>();
         public ObservableCollection<string> CurrentProfileProcesses { get; set; } = new ObservableCollection<string>();
         public ObservableCollection<ProcessItem> RunningProcessList { get; set; } = new ObservableCollection<ProcessItem>();
+        public ObservableCollection<VisualResetItem> VisualResetItems { get; set; } = new ObservableCollection<VisualResetItem>();
         public ObservableCollection<ScreenOptionItem> ScreenOptions { get; set; } = new ObservableCollection<ScreenOptionItem>();
 
         public ControlPanelWindow()
@@ -74,6 +90,7 @@ namespace BASpark
             ComboProfiles.ItemsSource = Profiles;
             ListConfiguredProcesses.ItemsSource = CurrentProfileProcesses;
             ListRunningProcesses.ItemsSource = RunningProcessList;
+            ListVisualResetItems.ItemsSource = VisualResetItems;
             ListScreenOptions.ItemsSource = ScreenOptions;
 
             LoadVersion();
@@ -747,6 +764,103 @@ namespace BASpark
                 AddProcessToActiveProfile(p);
             }
             RunningProcessOverlay.Visibility = Visibility.Collapsed;
+        }
+
+        private void EnsureVisualResetItems()
+        {
+            if (VisualResetItems.Count > 0)
+            {
+                return;
+            }
+
+            VisualResetItems.Add(new VisualResetItem(VisualAppearanceResetFlags.EffectScale, "缩放比例", "默认 1.50 ×"));
+            VisualResetItems.Add(new VisualResetItem(VisualAppearanceResetFlags.EffectOpacity, "全局不透明度", "默认 100 %"));
+            VisualResetItems.Add(new VisualResetItem(VisualAppearanceResetFlags.EffectSpeed, "动画播放速度", "默认 1.00 ×"));
+            VisualResetItems.Add(new VisualResetItem(VisualAppearanceResetFlags.TrailRefreshRate, "拖尾刷新率", "默认 40 Hz"));
+            VisualResetItems.Add(new VisualResetItem(VisualAppearanceResetFlags.ParticleColor, "特效主题颜色", "默认 RGB(45,175,255)"));
+        }
+
+        private void OpenVisualResetOverlay_Click(object sender, RoutedEventArgs e)
+        {
+            EnsureVisualResetItems();
+            foreach (var item in VisualResetItems)
+            {
+                item.IsSelected = true;
+            }
+
+            SearchVisualReset.Text = string.Empty;
+            ICollectionView view = CollectionViewSource.GetDefaultView(VisualResetItems);
+            if (view != null)
+            {
+                view.Filter = null;
+            }
+
+            VisualResetOverlay.Visibility = Visibility.Visible;
+        }
+
+        private void CloseVisualResetOverlay_Click(object sender, RoutedEventArgs e)
+        {
+            VisualResetOverlay.Visibility = Visibility.Collapsed;
+        }
+
+        private void SearchVisualReset_TextChanged(object sender, TextChangedEventArgs e)
+        {
+            string? filter = (sender as System.Windows.Controls.TextBox)?.Text;
+            ICollectionView view = CollectionViewSource.GetDefaultView(VisualResetItems);
+            if (view == null)
+            {
+                return;
+            }
+
+            if (string.IsNullOrWhiteSpace(filter))
+            {
+                view.Filter = null;
+            }
+            else
+            {
+                view.Filter = obj =>
+                {
+                    if (obj is VisualResetItem item)
+                    {
+                        return item.Title.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+                               item.Subtitle.Contains(filter, StringComparison.OrdinalIgnoreCase);
+                    }
+
+                    return false;
+                };
+            }
+        }
+
+        private void ConfirmVisualReset_Click(object sender, RoutedEventArgs e)
+        {
+            VisualAppearanceResetFlags flags = VisualAppearanceResetFlags.None;
+            foreach (var item in VisualResetItems)
+            {
+                if (item.IsSelected)
+                {
+                    flags |= item.Flags;
+                }
+            }
+
+            if (flags == VisualAppearanceResetFlags.None)
+            {
+                System.Windows.MessageBox.Show(this, "请至少选择一项要恢复的内容。", "恢复默认设置", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            ConfigManager.ApplyVisualAppearanceDefaults(flags);
+            LoadSettings();
+
+            double effectScale = Math.Round(SliderScale.Value, 2);
+            double effectOpacity = Math.Round(SliderOpacity.Value / 100.0, 2);
+            double effectSpeed = Math.Round(SliderSpeed.Value, 2);
+            int trailRefreshRate = (int)Math.Round(SliderTrailRefresh.Value);
+            App.Overlay?.UpdateColor(ConfigManager.ParticleColor);
+            App.Overlay?.UpdateEffectSettings(effectScale, effectOpacity, effectSpeed);
+            App.Overlay?.UpdateTrailRefreshRate(trailRefreshRate);
+
+            VisualResetOverlay.Visibility = Visibility.Collapsed;
+            System.Windows.MessageBox.Show(this, "所选视觉表现项已恢复为默认值并已保存。", "恢复默认设置", MessageBoxButton.OK, MessageBoxImage.Information);
         }
 
         private void AddProcessToActiveProfile(string processName)

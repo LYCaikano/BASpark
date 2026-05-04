@@ -344,29 +344,78 @@ namespace BASpark
             RunningProcessList.Clear();
             try
             {
-                var processes = Process.GetProcesses()
-                    .Where(p => !string.IsNullOrEmpty(p.MainWindowTitle))
-                    .OrderBy(p => p.ProcessName);
-
-                foreach (var p in processes)
+                int selfId = Environment.ProcessId;
+                foreach (Process p in Process.GetProcesses().OrderBy(x => x.ProcessName))
                 {
-                    string pName = p.ProcessName + ".exe";
-                    if (RunningProcessList.Any(item => item.ProcessName.Equals(pName, StringComparison.OrdinalIgnoreCase))) continue;
-
-                    string dName = pName;
-                    try 
-                    { 
-                        string? desc = p.MainModule?.FileVersionInfo.FileDescription;
-                        if (!string.IsNullOrWhiteSpace(desc)) dName = desc;
-                    } 
-                    catch { }
-
-                    RunningProcessList.Add(new ProcessItem
+                    try
                     {
-                        DisplayName = dName,
-                        ProcessName = pName,
-                        IsSelected = false
-                    });
+                        if (p.Id == selfId)
+                        {
+                            continue;
+                        }
+
+                        IntPtr hwnd;
+                        try
+                        {
+                            hwnd = p.MainWindowHandle;
+                        }
+                        catch
+                        {
+                            continue;
+                        }
+
+                        if (hwnd == IntPtr.Zero)
+                        {
+                            continue;
+                        }
+
+                        string baseName = p.ProcessName;
+                        if (string.IsNullOrEmpty(baseName))
+                        {
+                            continue;
+                        }
+
+                        string pName = baseName.EndsWith(".exe", StringComparison.OrdinalIgnoreCase)
+                            ? baseName.ToLowerInvariant()
+                            : (baseName + ".exe").ToLowerInvariant();
+
+                        if (RunningProcessList.Any(item => item.ProcessName.Equals(pName, StringComparison.OrdinalIgnoreCase)))
+                        {
+                            continue;
+                        }
+
+                        string dName = pName;
+                        try
+                        {
+                            string? desc = p.MainModule?.FileVersionInfo.FileDescription;
+                            if (!string.IsNullOrWhiteSpace(desc))
+                            {
+                                dName = desc;
+                            }
+                            else if (!string.IsNullOrEmpty(p.MainWindowTitle))
+                            {
+                                dName = p.MainWindowTitle;
+                            }
+                        }
+                        catch
+                        {
+                            if (!string.IsNullOrEmpty(p.MainWindowTitle))
+                            {
+                                dName = p.MainWindowTitle;
+                            }
+                        }
+
+                        RunningProcessList.Add(new ProcessItem
+                        {
+                            DisplayName = dName,
+                            ProcessName = pName,
+                            IsSelected = false
+                        });
+                    }
+                    finally
+                    {
+                        p.Dispose();
+                    }
                 }
             }
             catch (Exception ex) { Debug.WriteLine(ex.Message); }

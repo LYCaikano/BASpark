@@ -122,6 +122,7 @@ namespace BASpark
         {
             RebuildWindows(forceRebuild: true);
             SetupGlobalHooks();
+            UpdateTrailRefreshRate(ConfigManager.TrailRefreshRate);
             SystemEvents.DisplaySettingsChanged += HandleDisplaySettingsChanged;
         }
 

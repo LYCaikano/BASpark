@@ -101,11 +101,13 @@
                 window.addEventListener("mousemove", (e) => {
                     if (!this.isDown && !window.effectiveAlwaysTrail) return;
                     const p = getPos(e);
-                    if (!this.lastPos) this.lastPos = p;
-
-                    if (this.lastPos && dist(p, this.lastPos) > 2) {
-                        this.trail.push({ x: p.x, y: p.y, life: 1 });
+                    const prev = this.lastPos;
+                    if (!prev) {
                         this.lastPos = p;
+                        return;
+                    }
+                    if (dist(p, prev) > 2) {
+                        this.trail.push({ x: p.x, y: p.y, life: 1 });
                         if (this.trail.length > this.maxTrail) this.trail.shift();
 
                         if (Math.random() < 0.3) {
@@ -125,6 +127,7 @@
                             });
                         }
                     }
+                    this.lastPos = p;
                 });
 
                 window.addEventListener("mouseup", () => {
@@ -240,45 +243,76 @@
 
             _updateTrail(frameScale) {
                 const ctx = this.bufferCtx;
-                for (let i = this.trail.length - 1; i >= 0; i--) {
+                const n = this.trail.length;
+                let baseDecay;
+                if (window.effectiveAlwaysTrail) {
+                    baseDecay = 0.085 * frameScale;
+                } else {
+                    baseDecay = (this.isDown ? 0.085 : 0.18) * frameScale;
+                }
+                const maxStep = 0.42;
+                for (let i = n - 1; i >= 0; i--) {
                     const t = this.trail[i];
-                    if (window.effectiveAlwaysTrail) {
-                        t.life -= 0.085 * frameScale;
-                    } else {
-                        t.life -= (this.isDown ? 0.085 : 0.18) * frameScale;
-                    }
+                    const span = Math.max(1, n - 1);
+                    const along = n > 1 ? i / span : 1;
+                    const towardCursorBias = 1.25 - 0.55 * along;
+                    let step = baseDecay * towardCursorBias;
+                    if (step > maxStep) step = maxStep;
+                    t.life -= step;
                     if (t.life <= 0) this.trail.splice(i, 1);
                 }
 
-                if (this.trail.length > 1) {
-                    // 逐段渲染：每段的透明度基于数组索引位置，而非空间位置
-                    // 防止当鼠标锐角转动时，尾迹变淡后突然出现的问题
-                    ctx.lineWidth = 5.0;
-                    ctx.shadowColor = `rgba(${this.color}, 0.6)`;
-                    ctx.shadowBlur = 3;
-                    ctx.shadowOffsetX = 0;
-                    ctx.shadowOffsetY = 0;
+                const head = this.lastPos;
+                const pts =
+                    head && this.trail.length > 0
+                        ? this.trail.concat([{ x: head.x, y: head.y, life: 1 }])
+                        : this.trail.slice();
 
-                    const lastIdx = this.trail.length - 1;
-                    for (let i = 0; i < lastIdx; i++) {
-                        const alphaStart = i / lastIdx;
-                        const alphaEnd = (i + 1) / lastIdx;
-                        const a0 = this.trail[i];
-                        const a1 = this.trail[i + 1];
-
-                        const segGrad = ctx.createLinearGradient(a0.x, a0.y, a1.x, a1.y);
-                        segGrad.addColorStop(0, `rgba(${this.color}, ${alphaStart})`);
-                        segGrad.addColorStop(1, `rgba(${this.color}, ${alphaEnd})`);
-
-                        ctx.beginPath();
-                        ctx.moveTo(a0.x, a0.y);
-                        ctx.lineTo(a1.x, a1.y);
-                        ctx.strokeStyle = segGrad;
-                        ctx.stroke();
-                    }
-
-                    ctx.shadowColor = 'transparent';
+                if (pts.length < 2) {
+                    return;
                 }
+
+                const gap = Math.hypot(
+                    pts[pts.length - 1].x - pts[pts.length - 2].x,
+                    pts[pts.length - 1].y - pts[pts.length - 2].y
+                );
+                if (gap < 0.75 && this.trail.length === 1) {
+                    const fade = Math.max(0, this.trail[0].life);
+                    ctx.shadowColor = 'transparent';
+                    ctx.beginPath();
+                    ctx.arc(pts[0].x, pts[0].y, 2.5 + 2 * fade, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(${this.color}, ${fade * 0.85})`;
+                    ctx.fill();
+                    return;
+                }
+
+                // 逐段渲染：每段的透明度基于数组索引位置，而非空间位置
+                // 防止当鼠标锐角转动时，尾迹变淡后突然出现的问题
+                ctx.lineWidth = 5.0;
+                ctx.shadowColor = `rgba(${this.color}, 0.6)`;
+                ctx.shadowBlur = 3;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 0;
+
+                const lastIdx = pts.length - 1;
+                for (let i = 0; i < lastIdx; i++) {
+                    const alphaStart = i / lastIdx;
+                    const alphaEnd = (i + 1) / lastIdx;
+                    const a0 = pts[i];
+                    const a1 = pts[i + 1];
+
+                    const segGrad = ctx.createLinearGradient(a0.x, a0.y, a1.x, a1.y);
+                    segGrad.addColorStop(0, `rgba(${this.color}, ${alphaStart})`);
+                    segGrad.addColorStop(1, `rgba(${this.color}, ${alphaEnd})`);
+
+                    ctx.beginPath();
+                    ctx.moveTo(a0.x, a0.y);
+                    ctx.lineTo(a1.x, a1.y);
+                    ctx.strokeStyle = segGrad;
+                    ctx.stroke();
+                }
+
+                ctx.shadowColor = 'transparent';
             }
 
             _strokeRingSegment(wx, wy, radius, a0, a1, lineWidth, strokeStyle) {
